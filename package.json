@@ -1,0 +1,13 @@
+{
+  "name": "file-manager-api",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "ws": "node websocket.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "ws": "^8.13.0"
+  }
+}
