@@ -1,13 +1,36 @@
 {
   "name": "file-manager-api",
   "version": "1.0.0",
+  "description": "Gestionnaire de fichiers multi-utilisateur avec WebSocket",
   "type": "commonjs",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "ws": "node websocket.js",
-    "test": "node --test"
+    "dev": "node server.js & node websocket.js",
+    "test": "node --test test/*.js"
   },
   "dependencies": {
-    "ws": "^8.13.0"
-  }
+    "ws": "^8.18.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": [
+    "nodejs",
+    "file-manager",
+    "websocket",
+    "api",
+    "authentication"
+  ],
+  "author": "Étudiant",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ad-tr/tp_node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ad-tr/tp_node/issues"
+  },
+  "homepage": "https://github.com/ad-tr/tp_node#readme"
 }

@@ -7,9 +7,23 @@
 - spawn/exec pour traitement système
 - Pas de frameworks externes sauf `ws`
 
-## Démarrage
-```bash
-npm install
-npm start        # Lancer l'API HTTP
-npm run ws       # Lancer le serveur WebSocket
+## Démarrage du projet
 ```
+npm install
+npm run start
+```
+Cela démarre sur http://localhost:3000
+
+## Comment se connecter
+
+Ouvrir le fichier `interface.html` sur votre navigateur pour pouvoir tester les fonctionnalités
+
+## Se connecter
+```
+Username : admin
+Password : password
+```
+
+## Tips
+
+Après le partage d'un fichier, il est utile d'appuyer su 

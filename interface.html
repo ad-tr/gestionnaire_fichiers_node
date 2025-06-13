@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gestionnaire de fichiers</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>Gestionnaire de fichiers</h1>
+    
+    <div id="login-section">
+        <h2>Connection</h2>
+        <input type="text" id="username" placeholder="Username" value="alice">
+        <input type="password" id="password" placeholder="Password" value="password123">
+        <button onclick="login()">Login</button>
+        <p id="login-status"></p>
+    </div>
+
+    <div id="app-section" style="display:block;">
+        <button onclick="logout()">Se déconnecter</button>
+        
+        <h3>Importation de fichiers</h3>
+        <input type="file" id="fileInput" multiple>
+        <button onclick="uploadFile()">Importer</button>
+        
+        <h3>Mes fichiers</h3>
+        <button onclick="loadFiles()">Rafraichir</button>
+        <div id="file-list"></div>
+        
+        <h3>Fichiers partagés</h3>
+        <button onclick="loadSharedFiles()">Charger les fichiers partagés</button>
+        <div id="shared-files"></div>
+        
+        <h3>Actions</h3>
+        <input type="text" id="analyzeFile" placeholder="Nom du fichier à analyser">
+        <button onclick="analyzeFile()">Analyser</button>
+        <br><br>
+        <input type="text" id="shareFile" placeholder="Nom du fichier à partager">
+        <button onclick="shareFile()">Partager</button>
+        <br><br>
+        <button onclick="compressFiles()">Compresser tous les fichiers</button>
+
+        <!-- WebSocket Status -->
+        <h3>Status du WebSocket</h3>
+        <p id="ws-status">Se déconnecter</p>
+        <button onclick="connectWebSocket()">Se connecter au WebSocket</button>
+        
+        <h3>Notifications</h3>
+        <div id="notifications"></div>
+    </div>
+
+    <script>
+        let token = null;
+        let ws = null;
+        const API_BASE = 'http://localhost:3000';
+        const WS_URL = 'ws://localhost:8081';
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.token;
+                    document.getElementById('login-status').textContent = 'Login successful!';
+                    loadFiles();
+                    connectWebSocket();
+                } else {
+                    document.getElementById('login-status').textContent = data.error;
+                }
+            } catch (error) {
+                document.getElementById('login-status').textContent = 'Connection error: ' + error.message;
+            }
+        }
+
+        async function logout() {
+            try {
+                await fetch(`${API_BASE}/logout`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+            
+            token = null;
+            if (ws) ws.close();
+            document.getElementById('login-section').style.display = 'block';
+            document.getElementById('app-section').style.display = 'none';
+        }
+
+        async function loadFiles() {
+            if (!token) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/files`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayFiles(data.files);
+                } else {
+                    alert('Error loading files: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function displayFiles(files) {
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = '';
+            
+            files.forEach(file => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <p>
+                        <strong>${file.name}</strong> (${file.size} bytes)
+                        <button onclick="downloadFile('${file.name}')">Download</button>
+                        <button onclick="deleteFile('${file.name}')">Delete</button>
+                    </p>
+                `;
+                fileList.appendChild(div);
+            });
+        }
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('File uploaded successfully!');
+                    loadFiles();
+                    fileInput.value = '';
+                } else {
+                    alert('Upload error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function downloadFile(filename) {
+            fetch(`http://localhost:3000/download/${encodeURIComponent(filename)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+
+            .then(response => {
+                if (!response.ok) throw new Error('Erreur lors du téléchargement');
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(err => alert(err.message));
+        }
+
+        async function deleteFile(filename) {
+            if (!confirm(`Delete ${filename}?`)) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/files/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('File deleted successfully!');
+                    loadFiles();
+                } else {
+                    alert('Delete error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function analyzeFile() {
+            const filename = document.getElementById('analyzeFile').value;
+            if (!filename) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/analyze`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ filename })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`Analysis: ${JSON.stringify(data.analysis, null, 2)}`);
+                } else {
+                    alert('Analysis error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function shareFile() {
+            const filename = document.getElementById('shareFile').value;
+            if (!filename) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/share`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ filename })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('File shared successfully!');
+                } else {
+                    alert('Share error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function compressFiles() {
+            try {
+                const response = await fetch(`${API_BASE}/compress`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Compression started!');
+                } else {
+                    alert('Compression error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function loadSharedFiles() {
+            if (!token) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/shared`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displaySharedFiles(data.files);
+                } else {
+                    alert('Error loading shared files: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function displaySharedFiles(files) {
+            const sharedList = document.getElementById('shared-files');
+            sharedList.innerHTML = '';
+            
+            files.forEach(file => {
+                console.log('Shared file:', file);
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <p>
+                        <strong>${file.originalName}</strong> (shared by ${file.sharedBy}) - ${file.size} bytes
+                        <button onclick="downloadSharedFile('${file.originalName}')">Download</button>
+                    </p>
+                `;
+                sharedList.appendChild(div);
+            });
+        }
+
+        function downloadSharedFile(filename) {
+            fetch(`${API_BASE}/shared/download/user-001-test.html`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Erreur lors du téléchargement');
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                addNotification({
+                    type: 'file_downloaded',
+                    filename: filename
+                });
+            })
+            .catch(err => alert(err.message));
+        }
+
+        function connectWebSocket() {
+            if (!token) return;
+            
+            ws = new WebSocket(WS_URL);
+            
+            ws.onopen = function() {
+                document.getElementById('ws-status').textContent = 'Connected';
+                ws.send(JSON.stringify({ type: 'auth', token: token }));
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                console.log('WebSocket message:', data);
+                
+                if (data.type !== 'auth_success') {
+                    addNotification(data);
+                } else if (data.type === 'auth_success') {
+                    document.getElementById('ws-status').textContent = 'Authenticated';
+                }
+            };
+
+            
+            ws.onclose = function() {
+                document.getElementById('ws-status').textContent = 'Disconnected';
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                document.getElementById('ws-status').textContent = 'Error';
+            };
+        }
+
+        const notificationMessages = {
+            file_uploaded: "Fichier téléversé avec succès.",
+            file_deleted: "Fichier supprimé.",
+            compression_completed: "Compression terminée.",
+            file_shared: "Fichier partagé.",
+            file_downloaded: "Fichier téléchargé."
+        };
+
+        function addNotification(notification) {
+            const notificationsDiv = document.getElementById('notifications');
+            const div = document.createElement('div');
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString();
+
+            let msg = notificationMessages[notification.type] || notification.message || notification.type || '';
+            if (msg.length > 0) {
+                msg = msg.charAt(0).toUpperCase() + msg.slice(1);
+            }
+
+            div.innerHTML = `<strong>[${timestamp}]</strong> ${msg}`;
+            notificationsDiv.insertBefore(div, notificationsDiv.firstChild);
+
+            while (notificationsDiv.children.length > 10) {
+                notificationsDiv.removeChild(notificationsDiv.lastChild);
+            }
+        }
+
+
+    </script>
+</body>
+</html>
