@@ -26,4 +26,4 @@ Password : password
 
 ## Tips
 
-Après le partage d'un fichier, il est utile d'appuyer su 
+Après le partage d'un fichier, il est utile d'appuyer sur `Charger les fichiers partagés` pour afficher les fichiers qui ont été partagé
