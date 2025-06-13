@@ -69,7 +69,7 @@
                 
                 if (response.ok) {
                     token = data.token;
-                    document.getElementById('login-status').textContent = 'Login successful!';
+                    document.getElementById('login-status').textContent = 'Connexion réussie !';
                     loadFiles();
                     connectWebSocket();
                 } else {
@@ -138,7 +138,7 @@
             const file = fileInput.files[0];
             
             if (!file) {
-                alert('Please select a file');
+                alert('Selectionnez un fichier à importer.');
                 return;
             }
             
@@ -155,14 +155,14 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    alert('File uploaded successfully!');
+                    alert('Fichier importé avec succès !');
                     loadFiles();
                     fileInput.value = '';
                 } else {
-                    alert('Upload error: ' + data.error);
+                    alert('Erreur d\'importation : ' + data.error);
                 }
             } catch (error) {
-                alert('Error: ' + error.message);
+                alert('Erreur : ' + error.message);
             }
         }
 
@@ -187,7 +187,7 @@
         }
 
         async function deleteFile(filename) {
-            if (!confirm(`Delete ${filename}?`)) return;
+            if (!confirm(`Supprimer ${filename} ?`)) return;
             
             try {
                 const response = await fetch(`${API_BASE}/files/${encodeURIComponent(filename)}`, {
@@ -198,7 +198,7 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    alert('File deleted successfully!');
+                    alert('Fichier supprimé avec succès !');
                     loadFiles();
                 } else {
                     alert('Delete error: ' + data.error);
@@ -251,12 +251,12 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    alert('File shared successfully!');
+                    alert('Fichier partagé avec succès !');
                 } else {
-                    alert('Share error: ' + data.error);
+                    alert('Erreur de partage : ' + data.error);
                 }
             } catch (error) {
-                alert('Error: ' + error.message);
+                alert('Erreur : ' + error.message);
             }
         }
 
@@ -270,12 +270,12 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    alert('Compression started!');
+                    alert('Compression en cours !');
                 } else {
-                    alert('Compression error: ' + data.error);
+                    alert('Erreur de compression : ' + data.error);
                 }
             } catch (error) {
-                alert('Error: ' + error.message);
+                alert('Erreur : ' + error.message);
             }
         }
 
@@ -292,10 +292,10 @@
                 if (response.ok) {
                     displaySharedFiles(data.files);
                 } else {
-                    alert('Error loading shared files: ' + data.error);
+                    alert('Erreur lors du chargement des fichiers partagés : ' + data.error);
                 }
             } catch (error) {
-                alert('Error: ' + error.message);
+                alert('Erreur : ' + error.message);
             }
         }
 
@@ -304,12 +304,12 @@
             sharedList.innerHTML = '';
             
             files.forEach(file => {
-                console.log('Shared file:', file);
+                console.log('Fichier partagé :', file);
                 const div = document.createElement('div');
                 div.innerHTML = `
                     <p>
-                        <strong>${file.originalName}</strong> (shared by ${file.sharedBy}) - ${file.size} bytes
-                        <button onclick="downloadSharedFile('${file.originalName}')">Download</button>
+                        <strong>${file.originalName}</strong> (partagé par ${file.sharedBy}) - ${file.size} octets
+                        <button onclick="downloadSharedFile('${file.originalName}')">Télécharger</button>
                     </p>
                 `;
                 sharedList.appendChild(div);
@@ -317,7 +317,7 @@
         }
 
         function downloadSharedFile(filename) {
-            fetch(`${API_BASE}/shared/download/user-001-test.html`, {
+            fetch(`${API_BASE}/shared/download/${filename}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             .then(response => {
